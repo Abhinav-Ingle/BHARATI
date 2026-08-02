@@ -1,0 +1,14 @@
+[
+    {
+        "name": "Lifeguard 1",
+        "mobile": "8010057119",
+        "username": "LF1",
+        "password": "LF1"
+    },
+    {
+        "name": "Lifeguard 2",
+        "mobile": "9011066778",
+        "username": "LF2",
+        "password": "LF2"
+    }
+]

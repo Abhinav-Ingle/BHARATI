@@ -1,0 +1,10 @@
+{
+    "danger_threshold": 85.0,
+    "min_person_pixels": 67,
+    "record_duration": 8,
+    "save_directory": "C:\\Users\\HP\\OneDrive\\Desktop\\BHARATI\\backend\\recordings",
+    "enable_log": true,
+    "enable_sms": true,
+    "enable_siren": true,
+    "sms_phone_number": "8010057119"
+}
