@@ -298,7 +298,7 @@ function App() {
         <button className="logout-btn" onClick={() => {setIsLoggedIn(false); setUsername(''); setPassword(''); setUserRole(null);}}><LogOut size={20} /> LOGOUT</button>
       </div>
 
-      <div className="main-content-area" style={{padding: '30px'}}>
+      <div className="main-content-area" style={{ padding: '30px', overflowY: 'auto', height: '100vh' }}>
         
         {/* VIEW 1: DASHBOARD */}
         {currentView === 'dashboard' && (
