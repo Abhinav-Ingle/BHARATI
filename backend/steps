@@ -1,0 +1,58 @@
+Step 1: Prep the Jetson
+First, boot up your Jetson Orin Nano, connect it to your Wi-Fi, and open a terminal.
+Clone your repository (or copy your backend folder) onto the Jetson.
+
+Navigate into the backend folder:
+
+Bash
+cd path/to/BHARATI/backend
+Step 2: Install Dependencies
+Since this is a fresh environment, you need to install the Python libraries. The Jetson has an NVIDIA GPU, so it will leverage TensorRT or standard CUDA to run YOLO incredibly fast.
+
+Run this in your terminal:
+
+Bash
+pip3 install fastapi uvicorn ultralytics pymongo twilio opencv-python numpy pydantic
+(Note: Because the Jetson runs on ARM architecture, if it struggles to install ultralytics or torch via standard pip, you may need to install the specific PyTorch wheel provided by NVIDIA for your version of JetPack. Let me know if it throws a PyTorch error here).
+
+Step 3: Start the FastAPI Server
+Once the libraries are installed, start your Uvicorn server exactly like you would on your laptop.
+
+Bash
+python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
+Your backend is now running locally on the Jetson! You can verify this by opening a browser on the Jetson and going to http://localhost:8000/status.
+
+Step 4: Create the Public Tunnel (Ngrok)
+Right now, your Vercel frontend (which lives on the public internet) cannot see your Jetson (which lives on your private Wi-Fi). We will use a free tool called Ngrok to punch a secure hole through your router.
+
+Keep your Uvicorn server running. Open a second terminal window on the Jetson.
+
+Install Ngrok:
+
+Bash
+curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+sudo apt update
+sudo apt install ngrok
+Go to ngrok.com, create a free account, and grab your Authtoken from the dashboard.  
+
+Authenticate your Jetson:  
+
+Bash
+ngrok config add-authtoken YOUR_AUTH_TOKEN
+Start the tunnel, pointing it at your FastAPI port:  
+
+Bash
+ngrok http 8000
+Ngrok will clear the terminal and output a screen with a Forwarding URL that looks something like [https://a1b2-c3d4.ngrok-free.app](https://a1b2-c3d4.ngrok-free.app).  
+
+Step 5: Connect Vercel to the Jetson
+That Ngrok URL is your Jetson's new, temporary public address!
+
+On your laptop, open src/App.js.
+
+Update line 17 with the new Ngrok URL:
+
+JavaScript
+const API_URL = "https://a1b2-c3d4.ngrok-free.app"; // Use your exact Ngrok URL
+Save, commit, and push this to GitHub so Vercel rebuilds the frontend.
