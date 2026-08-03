@@ -255,7 +255,7 @@ function App() {
     return (
       <div className="login-container">
         <div className="login-box">
-          <div className="login-header"> <Shield size={40} className="text-cyan-400" /> <h1>H2O <span className="text-sm opacity-50">ACCESS CONTROL</span></h1> </div>
+          <div className="login-header"> <Shield size={40} className="text-cyan-400" /> <h1>BHARATI <span className="text-sm opacity-50">ACCESS CONTROL</span></h1> </div>
           <div className="hardware-check-section">
             <button type="button" className="check-btn" onClick={checkHardware} disabled={isChecking}>
                 {isChecking ? <Loader2 className="spin" size={18}/> : <RefreshCw size={18}/>} {isChecking ? "DIAGNOSING..." : "VERIFY SYSTEMS"}
@@ -282,7 +282,7 @@ function App() {
   return (
     <div className="dashboard-container">
       <div className="sidebar">
-        <div className="brand"><Shield size={24} /> H2O</div>
+        <div className="brand"><Shield size={24} /> BHARATI</div>
         <div className="nav-buttons">
             <button className={`nav-btn ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentView('dashboard')}> <LayoutDashboard size={16}/> Dashboard </button>
             <button className={`nav-btn ${currentView === 'cameras' ? 'active' : ''}`} onClick={() => setCurrentView('cameras')}> <Video size={16}/> Cameras </button>
