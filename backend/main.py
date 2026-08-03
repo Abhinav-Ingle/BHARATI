@@ -7,14 +7,22 @@ import os
 import datetime
 import math
 import numpy as np
-from tkinter import filedialog
-import tkinter as tk
 from fastapi import FastAPI, Response, Request, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
 from pydantic import BaseModel
 from typing import List
+
+# ==========================================
+# CLOUD COMPATIBILITY FIX: TKINTER (GUI)
+# ==========================================
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+except ImportError:
+    tk = None
+    filedialog = None
 
 # --- MONGODB & WHATSAPP IMPORTS ---
 from pymongo import MongoClient
@@ -25,7 +33,7 @@ except ImportError:
     print("⚠️ Twilio library not found. Run 'pip install twilio'")
 
 # ==========================================
-# LINUX/CLOUD COMPATIBILITY FIX
+# CLOUD COMPATIBILITY FIX: WINSOUND (AUDIO)
 # ==========================================
 try:
     import winsound
@@ -366,11 +374,16 @@ def delete_lifeguard(username: str, admin_id: str):
 
 @app.get("/browse")
 def browse_folder():
+    # If running on the cloud where tkinter is disabled, return a default cloud folder
+    if tk is None or filedialog is None:
+        return {"path": "./recordings"}
+        
     try:
         root = tk.Tk(); root.withdraw(); root.attributes('-topmost', True)
         folder_path = filedialog.askdirectory(); root.destroy()
         return {"path": folder_path}
-    except: return {"path": ""}
+    except: 
+        return {"path": "./recordings"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
