@@ -14,7 +14,7 @@ L.Icon.Default.mergeOptions({
 });
 
 // IMPORTANT: Replace this with your actual Render URL
-const API_URL = "https://your-h2o-backend-url.onrender.com";
+const API_URL = "https://bharati.onrender.com";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -33,7 +33,6 @@ function App() {
   const audioCtxRef = useRef(null);
 
   const [activeCam, setActiveCam] = useState('CAM-01');
-  const [marineData, setMarineData] = useState({ temp: '--', wind: '--', wave: '1.2 m', tide: 'Rising' });
 
   // Web Camera Variables
   const videoRef = useRef(null);
@@ -49,23 +48,6 @@ function App() {
   const [lifeguards, setLifeguards] = useState([]);
   const [newGuard, setNewGuard] = useState({ name: "", mobile: "", username: "", password: "" });
 
-  // Weather Data Fetch
-  useEffect(() => {
-    if (isLoggedIn) {
-        const fetchWeather = async () => {
-            try {
-                const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=17.78&longitude=83.37&current=temperature_2m,wind_speed_10m");
-                const wData = await res.json();
-                if (wData.current) {
-                    setMarineData(prev => ({
-                        ...prev, temp: `${Math.round(wData.current.temperature_2m)}°C`, wind: `${Math.round(wData.current.wind_speed_10m)} km/h`
-                    }));
-                }
-            } catch (e) { console.error("Weather fetch failed"); }
-        };
-        fetchWeather();
-    }
-  }, [isLoggedIn]);
 
   // Audio Siren
   const playSiren = () => {
@@ -125,12 +107,14 @@ function App() {
   // WEB CAMERA STREAMING ENGINE
   // -----------------------------------------------------------
   useEffect(() => {
+    let currentVideo = videoRef.current; // Save ref to variable for cleanup
+    
     if (isLoggedIn && currentView === 'cameras' && activeCam === 'CAM-01') {
         const startCamera = async () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
+                if (currentVideo) {
+                    currentVideo.srcObject = stream;
                     isStreaming.current = true;
                 }
             } catch (err) { console.error("Camera access denied"); }
@@ -138,17 +122,16 @@ function App() {
         startCamera();
 
         const captureAndSendFrame = async () => {
-            if (!videoRef.current || !canvasRef.current || !isStreaming.current) return;
+            if (!currentVideo || !canvasRef.current || !isStreaming.current) return;
             
-            const video = videoRef.current;
             const canvas = canvasRef.current;
             const ctx = canvas.getContext('2d');
             
-            if (video.videoWidth === 0) return; // Video not ready yet
+            if (currentVideo.videoWidth === 0) return; // Video not ready yet
             
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.width = currentVideo.videoWidth;
+            canvas.height = currentVideo.videoHeight;
+            ctx.drawImage(currentVideo, 0, 0, canvas.width, canvas.height);
             
             // Compress frame and send to Render backend
             const frameBase64 = canvas.toDataURL('image/jpeg', 0.5); 
@@ -173,8 +156,8 @@ function App() {
         return () => {
             clearInterval(frameInterval);
             isStreaming.current = false;
-            if (videoRef.current && videoRef.current.srcObject) {
-                videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+            if (currentVideo && currentVideo.srcObject) {
+                currentVideo.srcObject.getTracks().forEach(track => track.stop());
             }
         };
     }
@@ -205,6 +188,7 @@ function App() {
       }, 1000); 
       return () => clearInterval(interval);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, settings.enable_log, settings.enable_siren]);
 
   const addNotification = (msg, type) => { setNotifications(prev => [{ id: Date.now(), time: new Date().toLocaleTimeString(), msg: msg, type: type }, ...prev].slice(0, 50)); };
