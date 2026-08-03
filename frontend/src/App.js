@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { LayoutDashboard, Video, Bell, Shield, UserX, WifiOff, LogOut, Lock, RefreshCw, CheckCircle, XCircle, Loader2, CheckSquare, Settings, Save, AlertTriangle, Activity, MapPin, Users, Trash2 } from 'lucide-react';
 import './App.css';
 
-// Fix for Leaflet Icons
+// Fix for Leaflet Icons in React
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png')
 });
 
-// IMPORTANT: Replace this with your actual Render URL
+// ⚠️ IMPORTANT: Verify this is your exact Render URL without a trailing slash
 const API_URL = "https://bharati.onrender.com";
 
 function App() {
@@ -47,7 +47,6 @@ function App() {
   });
   const [lifeguards, setLifeguards] = useState([]);
   const [newGuard, setNewGuard] = useState({ name: "", mobile: "", username: "", password: "" });
-
 
   // Audio Siren
   const playSiren = () => {
@@ -96,7 +95,6 @@ function App() {
             if (!audioCtxRef.current) { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); }
             audioCtxRef.current.resume(); 
             
-            // Fetch initial configuration data
             fetchSettings();
             if(result.role === 'admin') fetchLifeguards(result.username);
         } else { alert("Invalid Credentials"); }
@@ -107,7 +105,7 @@ function App() {
   // WEB CAMERA STREAMING ENGINE
   // -----------------------------------------------------------
   useEffect(() => {
-    let currentVideo = videoRef.current; // Save ref to variable for cleanup
+    let currentVideo = videoRef.current; 
     
     if (isLoggedIn && currentView === 'cameras' && activeCam === 'CAM-01') {
         const startCamera = async () => {
@@ -127,13 +125,12 @@ function App() {
             const canvas = canvasRef.current;
             const ctx = canvas.getContext('2d');
             
-            if (currentVideo.videoWidth === 0) return; // Video not ready yet
+            if (currentVideo.videoWidth === 0) return; 
             
             canvas.width = currentVideo.videoWidth;
             canvas.height = currentVideo.videoHeight;
             ctx.drawImage(currentVideo, 0, 0, canvas.width, canvas.height);
             
-            // Compress frame and send to Render backend
             const frameBase64 = canvas.toDataURL('image/jpeg', 0.5); 
             
             try {
@@ -147,10 +144,9 @@ function App() {
                     const result = await response.json();
                     setProcessedImage(result.processed_image);
                 }
-            } catch (err) { /* Silent fail */ }
+            } catch (err) { /* Silent fail to prevent crashing on dropped packets */ }
         };
 
-        // Send a frame to the cloud every 500ms (2 FPS)
         const frameInterval = setInterval(captureAndSendFrame, 500);
 
         return () => {
@@ -251,7 +247,6 @@ function App() {
         }
     } catch (e) { alert("Failed to delete lifeguard"); }
   };
-
 
   // --- LOGIN SCREEN ---
   if (!isLoggedIn) {
@@ -391,7 +386,7 @@ function App() {
 
                 <div className="cameras-right">
                     <div className="side-panel-card">
-                        <h4 className="panel-title">Safety Summary</h4>
+                        <h4 className="panel-title">SAFETY SUMMARY</h4>
                         <div className="kpi-row">
                             <div className="kpi-col"><small style={{color:'#7dd3fc'}}>TOTAL DETECTED</small><span className="text-primary">{globalDetected}</span></div>
                             <div className="kpi-col"><small style={{color:'#34d399'}}>SAFE ZONE</small><span>{globalSafe}</span></div>
@@ -399,7 +394,7 @@ function App() {
                         </div>
                     </div>
                     <div className="side-panel-card" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
-                        <h4 className="panel-title">Beach Alerts</h4>
+                        <h4 className="panel-title">BEACH ALERTS</h4>
                         <div className="alerts-list" style={{flex: 1, overflowY: 'auto'}}>
                             {notifications.slice(0, 4).map((note) => (
                                 <div key={note.id} className="dash-alert-item" style={{padding: '12px', gap: '12px'}}>
@@ -475,7 +470,6 @@ function App() {
                  <h2 style={{marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px'}}><Users /> Lifeguard Management</h2>
                  
                  <div className="lifeguard-split" style={{display: 'flex', gap: '20px'}}>
-                     {/* Add Lifeguard Form */}
                      <div className="settings-card" style={{flex: 1, background: '#1e293b', padding: '20px', borderRadius: '12px', height: 'fit-content'}}>
                          <h4 style={{marginBottom: '15px', color: '#34d399'}}>Register New Lifeguard</h4>
                          <form onSubmit={handleAddLifeguard} style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
@@ -501,7 +495,6 @@ function App() {
                          </form>
                      </div>
 
-                     {/* Lifeguards Roster */}
                      <div className="settings-card" style={{flex: 2, background: '#1e293b', padding: '20px', borderRadius: '12px'}}>
                          <h4 style={{marginBottom: '15px', color: '#38bdf8'}}>Active Roster</h4>
                          <div style={{background: '#0f172a', borderRadius: '8px', overflow: 'hidden'}}>
