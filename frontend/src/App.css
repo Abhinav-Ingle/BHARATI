@@ -423,3 +423,135 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
 .health-grid { display: flex; justify-content: space-between; text-align: center; margin-top: 10px; }
 .health-icon { margin: 0 auto 5px auto; }
+
+
+
+
+
+
+
+/* =========================================
+   BHARATI CUSTOM UI THEME SETTINGS 
+========================================= */
+
+/* Dark Styled Inputs */
+.styled-input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 8px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  color: #f8fafc;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.styled-input:focus {
+  border-color: #0ea5e9;
+}
+
+/* Large Blue Save Button */
+.save-btn-large {
+  width: 100%;
+  padding: 14px;
+  background: #0ea5e9;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s ease;
+}
+.save-btn-large:hover {
+  background: #0284c7;
+}
+
+/* Custom Checkbox Row */
+.custom-check-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: #0f172a;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #e2e8f0;
+  font-size: 0.95rem;
+  user-select: none;
+}
+.custom-check-row input[type="checkbox"] {
+  display: none;
+}
+.custom-check-row .check-box {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.custom-check-row input[type="checkbox"]:checked + .check-box {
+  background: #0ea5e9;
+  border-color: #0ea5e9;
+}
+.custom-check-row input[type="checkbox"]:checked + .check-box::after {
+  content: '✓';
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+/* Custom Range Sliders */
+.styled-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #334155;
+  border-radius: 4px;
+  outline: none;
+}
+.styled-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #0ea5e9;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+}
+
+/* Staff Directory Cards */
+.staff-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #0f172a;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #1e293b;
+}
+.icon-btn {
+  background: transparent;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.edit-btn { color: #0ea5e9; }
+.edit-btn:hover { background: rgba(14, 165, 233, 0.1); border-color: #0ea5e9; }
+.delete-btn { color: #ef4444; }
+.delete-btn:hover { background: rgba(239, 68, 68, 0.1); border-color: #ef4444; }

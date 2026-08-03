@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { LayoutDashboard, Video, Bell, Shield, UserX, WifiOff, LogOut, Lock, RefreshCw, CheckCircle, XCircle, Loader2, CheckSquare, Settings, Save, AlertTriangle, Activity, MapPin, Users, Trash2 } from 'lucide-react';
+import { LayoutDashboard, Video, Bell, Shield, UserX, WifiOff, LogOut, Lock, RefreshCw, CheckCircle, XCircle, Loader2, CheckSquare, Settings, Save, AlertTriangle, Activity, MapPin, Users, Trash2, List, Volume2, Smartphone, Phone, UserPlus, Edit2, Folder } from 'lucide-react';
 import './App.css';
 
 // Fix for Leaflet Icons in React
@@ -42,8 +42,8 @@ function App() {
 
   // Settings & Lifeguard States
   const [settings, setSettings] = useState({
-    danger_threshold: 85.0, min_person_pixels: 67, record_duration: 8, save_directory: "./recordings",
-    enable_log: true, enable_sms: true, enable_siren: true, sms_phone_number: "8010057119"
+    danger_threshold: 385, min_person_pixels: 67, record_duration: 8, save_directory: "C:\\Users\\Desktop\\BHARATI\\backend\\recordings",
+    enable_log: true, enable_sms: true, enable_siren: true, sms_phone_number: ""
   });
   const [lifeguards, setLifeguards] = useState([]);
   const [newGuard, setNewGuard] = useState({ name: "", mobile: "", username: "", password: "" });
@@ -65,7 +65,7 @@ function App() {
     } catch (e) { }
   };
 
-  // Hardware Check (Browser Camera)
+  // Hardware Check
   const checkHardware = async () => {
     setIsChecking(true);
     setCheckMessage("");
@@ -144,7 +144,7 @@ function App() {
                     const result = await response.json();
                     setProcessedImage(result.processed_image);
                 }
-            } catch (err) { /* Silent fail to prevent crashing on dropped packets */ }
+            } catch (err) { /* Silent fail */ }
         };
 
         const frameInterval = setInterval(captureAndSendFrame, 500);
@@ -227,7 +227,6 @@ function App() {
             const responseData = await res.json();
             setLifeguards(responseData.lifeguards);
             setNewGuard({ name: "", mobile: "", username: "", password: "" });
-            alert("Lifeguard added.");
         } else {
             const errData = await res.json();
             alert(`Error: ${errData.detail}`);
@@ -299,7 +298,7 @@ function App() {
         <button className="logout-btn" onClick={() => {setIsLoggedIn(false); setUsername(''); setPassword(''); setUserRole(null);}}><LogOut size={20} /> LOGOUT</button>
       </div>
 
-      <div className="main-content-area">
+      <div className="main-content-area" style={{padding: '30px'}}>
         
         {/* VIEW 1: DASHBOARD */}
         {currentView === 'dashboard' && (
@@ -388,9 +387,9 @@ function App() {
                     <div className="side-panel-card">
                         <h4 className="panel-title">SAFETY SUMMARY</h4>
                         <div className="kpi-row">
-                            <div className="kpi-col"><small style={{color:'#7dd3fc'}}>TOTAL DETECTED</small><span className="text-primary">{globalDetected}</span></div>
-                            <div className="kpi-col"><small style={{color:'#34d399'}}>SAFE ZONE</small><span>{globalSafe}</span></div>
-                            <div className="kpi-col"><small style={{color:'#fca5a5'}}>DANGER ZONE</small><span className="text-danger">{globalDanger}</span></div>
+                            <div className="kpi-col"><small style={{color:'#0ea5e9'}}>TOTAL DETECTED</small><span className="text-primary" style={{fontSize: '1.5rem'}}>{globalDetected}</span></div>
+                            <div className="kpi-col"><small style={{color:'#34d399'}}>SAFE ZONE</small><span style={{fontSize: '1.5rem'}}>{globalSafe}</span></div>
+                            <div className="kpi-col"><small style={{color:'#ef4444'}}>DANGER ZONE</small><span className="text-danger" style={{fontSize: '1.5rem'}}>{globalDanger}</span></div>
                         </div>
                     </div>
                     <div className="side-panel-card" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
@@ -398,14 +397,14 @@ function App() {
                         <div className="alerts-list" style={{flex: 1, overflowY: 'auto'}}>
                             {notifications.slice(0, 4).map((note) => (
                                 <div key={note.id} className="dash-alert-item" style={{padding: '12px', gap: '12px'}}>
-                                    <div className={`alert-indicator ${note.type === 'danger' ? 'bg-red' : note.type === 'success' ? 'bg-green' : 'bg-yellow'}`} style={{minWidth: '24px', height: '24px'}}>
-                                        {note.type === 'danger' && <AlertTriangle size={12} color="#000" />}
-                                        {note.type === 'success' && <CheckSquare size={12} color="#000" />}
-                                        {note.type === 'info' && <Bell size={12} color="#000" />}
+                                    <div className={`alert-indicator ${note.type === 'danger' ? 'bg-red' : note.type === 'success' ? 'bg-green' : 'bg-yellow'}`} style={{minWidth: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#eab308'}}>
+                                        {note.type === 'danger' && <AlertTriangle size={16} color="#000" />}
+                                        {note.type === 'success' && <CheckSquare size={16} color="#000" />}
+                                        {note.type === 'info' && <Bell size={16} color="#000" />}
                                     </div>
                                     <div className="alert-content">
-                                        <div className="alert-top" style={{fontSize: '0.85rem'}}>
-                                            <strong style={{color: note.type === 'danger' ? '#fca5a5' : '#eab308'}}>{activeCam} Alert</strong> <span style={{float: 'right', fontSize: '0.7rem', color: '#94a3b8'}}>{note.time}</span>
+                                        <div className="alert-top" style={{fontSize: '0.9rem'}}>
+                                            <strong style={{color: note.type === 'danger' ? '#ef4444' : '#facc15'}}>{activeCam} Alert</strong> 
                                         </div>
                                         <div className="alert-bot" style={{fontSize: '0.8rem', color: '#e2e8f0', marginTop: '2px'}}>{note.msg}</div>
                                     </div>
@@ -417,117 +416,142 @@ function App() {
             </div>
         )}
 
-        {/* VIEW 3: SETTINGS */}
+        {/* VIEW 3: SETTINGS (RESTORED BEAUTIFUL UI) */}
         {currentView === 'settings' && (
-             <div className="settings-wrapper" style={{padding: '20px', color: 'white'}}>
-                 <h2 style={{marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px'}}><Settings /> System Configuration</h2>
-                 
-                 <div className="settings-grid" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
-                     <div className="settings-card" style={{background: '#1e293b', padding: '20px', borderRadius: '12px'}}>
-                         <h4 style={{marginBottom: '15px', color: '#38bdf8'}}>Detection Parameters</h4>
-                         <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
-                             <div>
-                                 <label style={{display: 'block', fontSize: '0.85rem', marginBottom: '5px'}}>Danger Proximity Threshold (pixels)</label>
-                                 <input type="number" style={{width: '100%', padding: '8px', borderRadius: '4px', background: '#0f172a', border: '1px solid #334155', color: 'white'}}
-                                    value={settings.danger_threshold} onChange={(e) => setSettings({...settings, danger_threshold: parseFloat(e.target.value)})} />
-                             </div>
-                             <div>
-                                 <label style={{display: 'block', fontSize: '0.85rem', marginBottom: '5px'}}>WhatsApp Target Numbers (Comma separated)</label>
-                                 <input type="text" style={{width: '100%', padding: '8px', borderRadius: '4px', background: '#0f172a', border: '1px solid #334155', color: 'white'}}
-                                    value={settings.sms_phone_number} onChange={(e) => setSettings({...settings, sms_phone_number: e.target.value})} />
-                             </div>
+             <div className="settings-wrapper" style={{color: '#e2e8f0', maxWidth: '650px'}}>
+                 <h2 style={{marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.8rem', fontWeight: '600'}}>
+                    <Settings size={28}/> System Configuration
+                 </h2>
+
+                 <div style={{background: '#1e293b', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)'}}>
+                     <h4 style={{marginBottom: '20px', color: '#0ea5e9', fontSize: '0.85rem', letterSpacing: '1px', fontWeight: '700', textTransform: 'uppercase'}}>SYSTEM PARAMETERS</h4>
+                     <p style={{fontSize: '0.85rem', color: '#e2e8f0', marginBottom: '10px', fontWeight: '600'}}>Alert Preferences</p>
+
+                     <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px'}}>
+                         <label className="custom-check-row">
+                             <input type="checkbox" checked={settings.enable_log} onChange={(e) => setSettings({...settings, enable_log: e.target.checked})} />
+                             <span className="check-box"></span>
+                             <List size={18} /> Activity Log Notification
+                         </label>
+                         <label className="custom-check-row">
+                             <input type="checkbox" checked={settings.enable_siren} onChange={(e) => setSettings({...settings, enable_siren: e.target.checked})} />
+                             <span className="check-box"></span>
+                             <Volume2 size={18} /> Audio Siren
+                         </label>
+                         <label className="custom-check-row">
+                             <input type="checkbox" checked={settings.enable_sms} onChange={(e) => setSettings({...settings, enable_sms: e.target.checked})} />
+                             <span className="check-box"></span>
+                             <Smartphone size={18} /> WhatsApp Notification
+                         </label>
+                     </div>
+
+                     {/* Notify Lifeguards Area */}
+                     <div style={{background: '#0f172a', padding: '20px', borderRadius: '12px', marginBottom: '25px'}}>
+                        <p style={{fontSize: '0.85rem', color: '#94a3b8', marginBottom: '15px'}}>Notify these lifeguards:</p>
+                        {lifeguards.length > 0 ? (
+                            lifeguards.map((guard, idx) => (
+                                 <label key={idx} className="custom-check-row" style={{marginBottom: '10px', padding: '10px', background: '#1e293b'}}>
+                                     <input type="checkbox" defaultChecked />
+                                     <span className="check-box"></span>
+                                     <span style={{fontWeight: '600'}}>{guard.name}</span> <span style={{color: '#64748b', fontSize: '0.85rem'}}>({guard.mobile})</span>
+                                 </label>
+                            ))
+                        ) : (
+                            <p style={{color: '#64748b', fontSize: '0.85rem'}}>No active lifeguards found.</p>
+                        )}
+
+                        <div style={{marginTop: '20px'}}>
+                            <label style={{fontSize: '0.8rem', color: '#0ea5e9', display: 'block', marginBottom: '8px', fontWeight: '600'}}>Emergency / HQ Number</label>
+                            <div style={{display: 'flex', alignItems: 'center', background: '#1e293b', borderRadius: '8px', padding: '0 12px'}}>
+                                <Phone size={16} color="#64748b" />
+                                <input type="text" placeholder="+91..." value={settings.sms_phone_number} onChange={(e) => setSettings({...settings, sms_phone_number: e.target.value})} style={{background: 'transparent', border: 'none', color: 'white', padding: '12px', width: '100%', outline: 'none'}} />
+                            </div>
+                        </div>
+                     </div>
+
+                     {/* Sliders */}
+                     <div style={{marginBottom: '25px'}}>
+                         <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
+                             <label style={{fontSize: '0.85rem', fontWeight: '600', color: '#e2e8f0'}}>Safe Distance Threshold (Pixels)</label>
+                             <span style={{background: '#0ea5e9', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold'}}>{settings.danger_threshold} px</span>
+                         </div>
+                         <input type="range" min="50" max="600" value={settings.danger_threshold} onChange={(e) => setSettings({...settings, danger_threshold: parseInt(e.target.value)})} className="styled-slider" />
+                     </div>
+
+                     <div style={{marginBottom: '35px'}}>
+                         <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
+                             <label style={{fontSize: '0.85rem', fontWeight: '600', color: '#e2e8f0'}}>Capture Duration (Max 10s)</label>
+                             <span style={{background: '#0ea5e9', padding: '4px 12px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold'}}>{settings.record_duration} sec</span>
+                         </div>
+                         <input type="range" min="1" max="10" value={settings.record_duration} onChange={(e) => setSettings({...settings, record_duration: parseInt(e.target.value)})} className="styled-slider" />
+                     </div>
+                     
+                     <div style={{marginBottom: '30px'}}>
+                         <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: '600', color: '#e2e8f0', marginBottom: '10px'}}><Folder size={16}/> Save Directory</label>
+                         <div style={{display: 'flex', gap: '10px'}}>
+                             <input type="text" value={settings.save_directory} readOnly className="styled-input" style={{flex: 1, color: '#94a3b8'}} />
+                             <button style={{background: '#334155', color: 'white', border: 'none', borderRadius: '8px', padding: '0 20px', cursor: 'pointer', fontWeight: '600'}}>Select</button>
                          </div>
                      </div>
 
-                     <div className="settings-card" style={{background: '#1e293b', padding: '20px', borderRadius: '12px'}}>
-                         <h4 style={{marginBottom: '15px', color: '#38bdf8'}}>System Actions</h4>
-                         <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
-                             <label style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer'}}>
-                                 <input type="checkbox" checked={settings.enable_siren} onChange={(e) => setSettings({...settings, enable_siren: e.target.checked})} />
-                                 Enable Audio Siren on Danger
-                             </label>
-                             <label style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer'}}>
-                                 <input type="checkbox" checked={settings.enable_sms} onChange={(e) => setSettings({...settings, enable_sms: e.target.checked})} />
-                                 Enable WhatsApp Alert Dispatch
-                             </label>
-                             <label style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer'}}>
-                                 <input type="checkbox" checked={settings.enable_log} onChange={(e) => setSettings({...settings, enable_log: e.target.checked})} />
-                                 Log Events to Dashboard
-                             </label>
-                         </div>
-                     </div>
+                     <button onClick={handleSaveSettings} className="save-btn-large">
+                         <Save size={18} /> Apply & Save Settings
+                     </button>
                  </div>
-
-                 <button onClick={handleSaveSettings} style={{marginTop: '20px', padding: '10px 20px', background: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
-                     <Save size={18} /> Apply Changes
-                 </button>
              </div>
         )}
 
-        {/* VIEW 4: LIFEGUARDS (Admin Only) */}
+        {/* VIEW 4: LIFEGUARDS (RESTORED BEAUTIFUL UI) */}
         {currentView === 'lifeguards' && userRole === 'admin' && (
-             <div className="lifeguards-wrapper" style={{padding: '20px', color: 'white'}}>
-                 <h2 style={{marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px'}}><Users /> Lifeguard Management</h2>
-                 
-                 <div className="lifeguard-split" style={{display: 'flex', gap: '20px'}}>
-                     <div className="settings-card" style={{flex: 1, background: '#1e293b', padding: '20px', borderRadius: '12px', height: 'fit-content'}}>
-                         <h4 style={{marginBottom: '15px', color: '#34d399'}}>Register New Lifeguard</h4>
-                         <form onSubmit={handleAddLifeguard} style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                             <div>
-                                 <label style={{fontSize: '0.8rem', display: 'block', marginBottom: '4px'}}>Full Name</label>
-                                 <input type="text" required value={newGuard.name} onChange={(e)=>setNewGuard({...newGuard, name: e.target.value})} style={{width: '100%', padding: '8px', borderRadius: '4px', background: '#0f172a', border: '1px solid #334155', color: 'white'}} />
+             <div className="lifeguards-wrapper" style={{color: '#e2e8f0'}}>
+                 <h2 style={{marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.8rem', fontWeight: '600'}}>
+                     <Users size={28}/> Staff Management
+                 </h2>
+
+                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px'}}>
+
+                     {/* Register New Lifeguard */}
+                     <div style={{background: '#1e293b', padding: '30px', borderRadius: '16px', height: 'fit-content', boxShadow: '0 4px 20px rgba(0,0,0,0.2)'}}>
+                         <h4 style={{marginBottom: '20px', color: '#0ea5e9', fontSize: '0.85rem', letterSpacing: '1px', fontWeight: '700', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px'}}><UserPlus size={16}/> REGISTER NEW LIFEGUARD</h4>
+
+                         <form onSubmit={handleAddLifeguard} style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                             <input type="text" placeholder="Full Name" required value={newGuard.name} onChange={(e)=>setNewGuard({...newGuard, name: e.target.value})} className="styled-input" />
+                             <input type="text" placeholder="Mobile Number" required value={newGuard.mobile} onChange={(e)=>setNewGuard({...newGuard, mobile: e.target.value})} className="styled-input" />
+                             <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
+                                 <input type="text" placeholder="Username (ID)" required value={newGuard.username} onChange={(e)=>setNewGuard({...newGuard, username: e.target.value})} className="styled-input" />
+                                 <input type="password" placeholder="Password" required value={newGuard.password} onChange={(e)=>setNewGuard({...newGuard, password: e.target.value})} className="styled-input" />
                              </div>
-                             <div>
-                                 <label style={{fontSize: '0.8rem', display: 'block', marginBottom: '4px'}}>Mobile Number (For WhatsApp)</label>
-                                 <input type="text" required value={newGuard.mobile} onChange={(e)=>setNewGuard({...newGuard, mobile: e.target.value})} style={{width: '100%', padding: '8px', borderRadius: '4px', background: '#0f172a', border: '1px solid #334155', color: 'white'}} />
-                             </div>
-                             <div>
-                                 <label style={{fontSize: '0.8rem', display: 'block', marginBottom: '4px'}}>Login Username</label>
-                                 <input type="text" required value={newGuard.username} onChange={(e)=>setNewGuard({...newGuard, username: e.target.value})} style={{width: '100%', padding: '8px', borderRadius: '4px', background: '#0f172a', border: '1px solid #334155', color: 'white'}} />
-                             </div>
-                             <div>
-                                 <label style={{fontSize: '0.8rem', display: 'block', marginBottom: '4px'}}>Login Password</label>
-                                 <input type="password" required value={newGuard.password} onChange={(e)=>setNewGuard({...newGuard, password: e.target.value})} style={{width: '100%', padding: '8px', borderRadius: '4px', background: '#0f172a', border: '1px solid #334155', color: 'white'}} />
-                             </div>
-                             <button type="submit" style={{marginTop: '10px', padding: '10px', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'}}>
-                                 + Register Lifeguard
+                             <button type="submit" className="save-btn-large" style={{marginTop: '10px'}}>
+                                 <Save size={18} /> Save Credentials
                              </button>
                          </form>
                      </div>
 
-                     <div className="settings-card" style={{flex: 2, background: '#1e293b', padding: '20px', borderRadius: '12px'}}>
-                         <h4 style={{marginBottom: '15px', color: '#38bdf8'}}>Active Roster</h4>
-                         <div style={{background: '#0f172a', borderRadius: '8px', overflow: 'hidden'}}>
-                             <table style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
-                                 <thead>
-                                     <tr style={{background: '#334155', color: '#94a3b8', fontSize: '0.85rem'}}>
-                                         <th style={{padding: '12px'}}>Name</th>
-                                         <th style={{padding: '12px'}}>Username</th>
-                                         <th style={{padding: '12px'}}>Mobile</th>
-                                         <th style={{padding: '12px', textAlign: 'center'}}>Actions</th>
-                                     </tr>
-                                 </thead>
-                                 <tbody>
-                                     {lifeguards.length === 0 ? (
-                                         <tr><td colSpan="4" style={{padding: '20px', textAlign: 'center', color: '#64748b'}}>No lifeguards registered yet.</td></tr>
-                                     ) : (
-                                         lifeguards.map((guard, idx) => (
-                                             <tr key={idx} style={{borderBottom: '1px solid #1e293b'}}>
-                                                 <td style={{padding: '12px'}}>{guard.name}</td>
-                                                 <td style={{padding: '12px'}}>{guard.username}</td>
-                                                 <td style={{padding: '12px'}}>{guard.mobile}</td>
-                                                 <td style={{padding: '12px', textAlign: 'center'}}>
-                                                     <button onClick={() => handleDeleteLifeguard(guard.username)} style={{background: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer'}} title="Remove">
-                                                         <Trash2 size={18} />
-                                                     </button>
-                                                 </td>
-                                             </tr>
-                                         ))
-                                     )}
-                                 </tbody>
-                             </table>
+                     {/* Active Staff Directory */}
+                     <div style={{background: '#1e293b', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)'}}>
+                         <h4 style={{marginBottom: '20px', color: '#0ea5e9', fontSize: '0.85rem', letterSpacing: '1px', fontWeight: '700', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px'}}><Users size={16}/> ACTIVE STAFF DIRECTORY</h4>
+
+                         <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+                             {lifeguards.length === 0 ? (
+                                 <p style={{color: '#64748b'}}>No staff registered.</p>
+                             ) : (
+                                 lifeguards.map((guard, idx) => (
+                                     <div key={idx} className="staff-card">
+                                         <div>
+                                             <h5 style={{margin: '0 0 4px 0', fontSize: '1rem', fontWeight: '700'}}>{guard.name}</h5>
+                                             <p style={{margin: '0', fontSize: '0.8rem', color: '#94a3b8'}}>{guard.mobile}</p>
+                                             <p style={{margin: '4px 0 0 0', fontSize: '0.8rem', color: '#0ea5e9'}}>@{guard.username}</p>
+                                         </div>
+                                         <div style={{display: 'flex', gap: '8px'}}>
+                                             <button className="icon-btn edit-btn"><Edit2 size={14}/></button>
+                                             <button onClick={() => handleDeleteLifeguard(guard.username)} className="icon-btn delete-btn"><Trash2 size={14}/></button>
+                                         </div>
+                                     </div>
+                                 ))
+                             )}
                          </div>
                      </div>
+
                  </div>
              </div>
         )}
