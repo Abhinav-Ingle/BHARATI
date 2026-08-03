@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png')
 });
 
-const API_URL = "https://bharati.onrender.com";
+const API_URL = "https://redesigned-fiesta-x7967949v6gfvwrg-8000.app.github.dev/";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
