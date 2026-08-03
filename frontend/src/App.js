@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { LayoutDashboard, Video, Bell, Shield, UserX, WifiOff, LogOut, Lock, RefreshCw, CheckCircle, XCircle, Loader2, CheckSquare, Settings, Save, Folder, FolderOpen, Smartphone, Volume2, List, UserPlus, Trash2, Users, Edit2, X, Phone, AlertTriangle, Activity, MapPin } from 'lucide-react';
+import { LayoutDashboard, Video, Bell, Shield, UserX, WifiOff, LogOut, Lock, RefreshCw, CheckCircle, XCircle, Loader2, CheckSquare, Settings, Save, AlertTriangle, Activity, MapPin, Users, Trash2 } from 'lucide-react';
 import './App.css';
 
-// --- LEAFLET MARKER FIX ---
+// Fix for Leaflet Icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
@@ -13,7 +13,8 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png')
 });
 
-const API_URL = "https://bharati.onrender.com";
+// IMPORTANT: Replace this with your actual Render URL
+const API_URL = "https://your-h2o-backend-url.onrender.com";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -29,29 +30,26 @@ function App() {
   const [data, setData] = useState({ threat_level: "SAFE", threat_source: null, cameras: [] });
   const [notifications, setNotifications] = useState([{ id: 1, time: "System", msg: "System Online", type: "info" }]);
   const prevCamStates = useRef({}); 
-
   const audioCtxRef = useRef(null);
 
-  // Layout & Live Stats States
   const [activeCam, setActiveCam] = useState('CAM-01');
   const [marineData, setMarineData] = useState({ temp: '--', wind: '--', wave: '1.2 m', tide: 'Rising' });
 
+  // Web Camera Variables
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [processedImage, setProcessedImage] = useState(null);
+  const isStreaming = useRef(false);
+
   // Settings & Lifeguard States
   const [settings, setSettings] = useState({
-    danger_threshold: 300, min_person_pixels: 100, record_duration: 10, save_directory: "./recordings",
-    enable_log: true, enable_sms: false, enable_siren: false, sms_phone_number: "" 
+    danger_threshold: 85.0, min_person_pixels: 67, record_duration: 8, save_directory: "./recordings",
+    enable_log: true, enable_sms: true, enable_siren: true, sms_phone_number: "8010057119"
   });
-  const [saveStatus, setSaveStatus] = useState("");
   const [lifeguards, setLifeguards] = useState([]);
-  
-  // Guard State Objects
   const [newGuard, setNewGuard] = useState({ name: "", mobile: "", username: "", password: "" });
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingUsername, setEditingUsername] = useState(null); 
-  const [editGuardData, setEditGuardData] = useState({ name: "", mobile: "", username: "", password: "" });
-  const [extraSmsNumber, setExtraSmsNumber] = useState("");
 
-  // Live Weather API Fetch
+  // Weather Data Fetch
   useEffect(() => {
     if (isLoggedIn) {
         const fetchWeather = async () => {
@@ -60,17 +58,16 @@ function App() {
                 const wData = await res.json();
                 if (wData.current) {
                     setMarineData(prev => ({
-                        ...prev,
-                        temp: `${Math.round(wData.current.temperature_2m)}°C`,
-                        wind: `${Math.round(wData.current.wind_speed_10m)} km/h`
+                        ...prev, temp: `${Math.round(wData.current.temperature_2m)}°C`, wind: `${Math.round(wData.current.wind_speed_10m)} km/h`
                     }));
                 }
-            } catch (e) { console.error("Weather fetch failed:", e); }
+            } catch (e) { console.error("Weather fetch failed"); }
         };
         fetchWeather();
     }
   }, [isLoggedIn]);
 
+  // Audio Siren
   const playSiren = () => {
     try {
         if (!audioCtxRef.current) { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -82,150 +79,111 @@ function App() {
         oscillator.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5); 
         gainNode.gain.setValueAtTime(0.3, ctx.currentTime); 
         gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5); 
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        oscillator.start();
-        oscillator.stop(ctx.currentTime + 0.5); 
-    } catch (e) { console.error("Audio Error:", e); }
+        oscillator.connect(gainNode); gainNode.connect(ctx.destination);
+        oscillator.start(); oscillator.stop(ctx.currentTime + 0.5); 
+    } catch (e) { }
   };
 
-  const checkHardware = () => {
+  // Hardware Check (Browser Camera)
+  const checkHardware = async () => {
     setIsChecking(true);
     setCheckMessage("");
-    setTimeout(() => {
-        fetch(`${API_URL}/status`)
-        .then(res => res.json())
-        .then(result => {
-            const anyOnline = result.cameras.some(c => c.status === "online");
-            if (anyOnline) { setCameraReady(true); setCheckMessage("SUCCESS: Video Signal Detected."); } 
-            else { setCameraReady(false); setCheckMessage("ERROR: All Feeds Offline."); }
-            setIsChecking(false);
-        })
-        .catch(() => { setCameraReady(false); setCheckMessage("CRITICAL: Server Offline."); setIsChecking(false); });
-    }, 1500);
+    try {
+        await navigator.mediaDevices.getUserMedia({ video: true });
+        setCameraReady(true); 
+        setCheckMessage("SUCCESS: Device Camera Ready.");
+    } catch (err) {
+        setCameraReady(false); 
+        setCheckMessage("ERROR: Please allow camera permissions.");
+    }
+    setIsChecking(false);
   };
 
-  // --- DATABASE LOGIN VERIFICATION WITH ROLES ---
+  // Login Handler
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
         const res = await fetch(`${API_URL}/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
-        
         if (res.ok) {
-            const data = await res.json();
-            setUserRole(data.role); 
+            const result = await res.json();
+            setUserRole(result.role); 
             setIsLoggedIn(true);
             if (!audioCtxRef.current) { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); }
             audioCtxRef.current.resume(); 
-        } else { 
-            alert("Invalid Credentials"); 
-        }
-    } catch (err) {
-        alert("Server Error: Cannot reach MongoDB Database");
-    }
+            
+            // Fetch initial configuration data
+            fetchSettings();
+            if(result.role === 'admin') fetchLifeguards(result.username);
+        } else { alert("Invalid Credentials"); }
+    } catch (err) { alert("Server Error: Cannot reach Backend Database"); }
   };
 
-  // Fetch only this admin's lifeguards on login
+  // -----------------------------------------------------------
+  // WEB CAMERA STREAMING ENGINE
+  // -----------------------------------------------------------
   useEffect(() => {
-    if (isLoggedIn && userRole === 'admin') {
-        fetch(`${API_URL}/settings`).then(res => res.json()).then(data => { setSettings(prev => ({ ...prev, ...data, sms_phone_number: data.sms_phone_number || "" })); });
-        fetch(`${API_URL}/lifeguards?admin_id=${username}`)
-          .then(res => res.json())
-          .then(data => setLifeguards(data));
+    if (isLoggedIn && currentView === 'cameras' && activeCam === 'CAM-01') {
+        const startCamera = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    isStreaming.current = true;
+                }
+            } catch (err) { console.error("Camera access denied"); }
+        };
+        startCamera();
+
+        const captureAndSendFrame = async () => {
+            if (!videoRef.current || !canvasRef.current || !isStreaming.current) return;
+            
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            const ctx = canvas.getContext('2d');
+            
+            if (video.videoWidth === 0) return; // Video not ready yet
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Compress frame and send to Render backend
+            const frameBase64 = canvas.toDataURL('image/jpeg', 0.5); 
+            
+            try {
+                const response = await fetch(`${API_URL}/process_frame`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cam_id: "CAM-01", image: frameBase64 })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    setProcessedImage(result.processed_image);
+                }
+            } catch (err) { /* Silent fail */ }
+        };
+
+        // Send a frame to the cloud every 500ms (2 FPS)
+        const frameInterval = setInterval(captureAndSendFrame, 500);
+
+        return () => {
+            clearInterval(frameInterval);
+            isStreaming.current = false;
+            if (videoRef.current && videoRef.current.srcObject) {
+                videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+            }
+        };
     }
-  }, [isLoggedIn, username, userRole]);
+  }, [isLoggedIn, currentView, activeCam]);
 
-  const toggleLifeguardSms = (mobile) => {
-      const currentVal = settings.sms_phone_number || "";
-      let numbers = currentVal.split(',').map(s => s.trim()).filter(s => s);
-      if (numbers.includes(mobile)) numbers = numbers.filter(n => n !== mobile);
-      else numbers.push(mobile);
-      setSettings({...settings, sms_phone_number: numbers.join(', ')});
-  };
 
-  const updateExtraNumber = (val) => { setExtraSmsNumber(val); };
-
-  const handleSaveSettings = () => {
-    setSaveStatus("Saving...");
-    
-    let currentNumbers = (settings.sms_phone_number || "").split(',').map(s => s.trim()).filter(s => s);
-    let validLifeguardNumbers = lifeguards.map(g => g.mobile);
-    
-    let cleanedNumbers = currentNumbers.filter(num => validLifeguardNumbers.includes(num));
-
-    if (extraSmsNumber && extraSmsNumber.trim() !== "") {
-        if (!cleanedNumbers.includes(extraSmsNumber.trim())) {
-            cleanedNumbers.push(extraSmsNumber.trim());
-        }
-    }
-
-    const payload = { ...settings, sms_phone_number: cleanedNumbers.join(', ') };
-
-    fetch(`${API_URL}/settings`, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(payload) 
-    })
-    .then(async (res) => { 
-        if (!res.ok) throw new Error("Save Failed"); 
-        return res.json(); 
-    })
-    .then((savedData) => {
-        if (savedData && savedData.settings) {
-            setSettings(prev => ({ ...prev, ...savedData.settings, sms_phone_number: savedData.settings.sms_phone_number || "" }));
-            setSaveStatus("Saved Successfully!"); 
-        }
-        setTimeout(() => setSaveStatus(""), 2000); 
-    }).catch(() => { 
-        setSaveStatus("Error Saving!"); 
-        setTimeout(() => setSaveStatus(""), 2000); 
-    });
-  };
-
-  const handleBrowse = () => { fetch(`${API_URL}/browse`).then(res => res.json()).then(data => { if (data.path) setSettings(prev => ({ ...prev, save_directory: data.path })); }); };
-  
-  // Create Lifeguard
-  const handleAddLifeguard = () => {
-    if(!newGuard.name || !newGuard.username) { alert("Fill all fields"); return; }
-    const payload = { ...newGuard, created_by: username }; // Inject admin ID
-    
-    fetch(`${API_URL}/lifeguards`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-    .then(res => res.json()).then(data => { 
-        setLifeguards(data.lifeguards); 
-        setNewGuard({ name: "", mobile: "", username: "", password: "" }); 
-    }).catch(err => alert("Error: Duplicate username"));
-  };
-  
-  // Update Lifeguard
-  const handleUpdateLifeguard = () => {
-    const payload = { ...editGuardData, created_by: username };
-    
-    fetch(`${API_URL}/lifeguards/${editingUsername}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-    .then(res => res.json()).then(data => { 
-        setLifeguards(data.lifeguards); 
-        setIsEditing(false); 
-    });
-  };
-  
-  // Delete Lifeguard
-  const handleDeleteLifeguard = (user) => {
-    if(window.confirm(`Delete ${user}?`)) {
-        fetch(`${API_URL}/lifeguards/${user}?admin_id=${username}`, { method: 'DELETE' })
-        .then(res => res.json())
-        .then(data => setLifeguards(data.lifeguards));
-    }
-  };
-
-  const handleEditClick = (g) => { setIsEditing(true); setEditingUsername(g.username); setEditGuardData({...g}); };
-  const cancelEdit = () => { setIsEditing(false); setEditingUsername(null); setEditGuardData({ name: "", mobile: "", username: "", password: "" }); };
-
-  // --- MAIN POLLING LOOP ---
+  // Polling for Dashboard Status Data
   useEffect(() => {
-    if (isLoggedIn && (currentView === 'dashboard' || currentView === 'cameras')) {
+    if (isLoggedIn) {
       const interval = setInterval(() => {
         fetch(`${API_URL}/status`)
           .then(res => res.json())
@@ -243,19 +201,83 @@ function App() {
                 prevCamStates.current[cam.id] = isDanger;
             });
             if (systemHasThreat && settings.enable_siren) { playSiren(); }
-          });
-      }, 500); 
+          }).catch(() => {});
+      }, 1000); 
       return () => clearInterval(interval);
     }
-  }, [isLoggedIn, currentView, settings.enable_log, settings.enable_siren]);
+  }, [isLoggedIn, settings.enable_log, settings.enable_siren]);
 
   const addNotification = (msg, type) => { setNotifications(prev => [{ id: Date.now(), time: new Date().toLocaleTimeString(), msg: msg, type: type }, ...prev].slice(0, 50)); };
 
+  // --- Settings Data Fetching & Saving ---
+  const fetchSettings = async () => {
+    try {
+        const res = await fetch(`${API_URL}/settings`);
+        if (res.ok) setSettings(await res.json());
+    } catch (e) {}
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+        const res = await fetch(`${API_URL}/settings`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+        if (res.ok) alert("Configuration Saved Successfully");
+    } catch (e) { alert("Failed to save configuration"); }
+  };
+
+  // --- Lifeguard Database Handling ---
+  const fetchLifeguards = async (adminId) => {
+    try {
+        const res = await fetch(`${API_URL}/lifeguards?admin_id=${adminId || username}`);
+        if (res.ok) setLifeguards(await res.json());
+    } catch (e) {}
+  };
+
+  const handleAddLifeguard = async (e) => {
+    e.preventDefault();
+    try {
+        const payload = { ...newGuard, created_by: username };
+        const res = await fetch(`${API_URL}/lifeguards`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            const responseData = await res.json();
+            setLifeguards(responseData.lifeguards);
+            setNewGuard({ name: "", mobile: "", username: "", password: "" });
+            alert("Lifeguard added.");
+        } else {
+            const errData = await res.json();
+            alert(`Error: ${errData.detail}`);
+        }
+    } catch (e) { alert("Failed to add lifeguard"); }
+  };
+
+  const handleDeleteLifeguard = async (guardUsername) => {
+    if (!window.confirm(`Are you sure you want to remove ${guardUsername}?`)) return;
+    try {
+        const res = await fetch(`${API_URL}/lifeguards/${guardUsername}?admin_id=${username}`, {
+            method: 'DELETE'
+        });
+        if (res.ok) {
+            const responseData = await res.json();
+            setLifeguards(responseData.lifeguards);
+        }
+    } catch (e) { alert("Failed to delete lifeguard"); }
+  };
+
+
+  // --- LOGIN SCREEN ---
   if (!isLoggedIn) {
     return (
       <div className="login-container">
         <div className="login-box">
-          <div className="login-header"> <Shield size={40} className="text-cyan-400" /> <h1>BHARATI <span className="text-sm opacity-50">ACCESS CONTROL</span></h1> </div>
+          <div className="login-header"> 
+            <Shield size={40} className="text-cyan-400" /> 
+            <h1>BHARATI <span className="text-sm opacity-50">ACCESS CONTROL</span></h1> 
+          </div>
           <div className="hardware-check-section">
             <button type="button" className="check-btn" onClick={checkHardware} disabled={isChecking}>
                 {isChecking ? <Loader2 className="spin" size={18}/> : <RefreshCw size={18}/>} {isChecking ? "DIAGNOSING..." : "VERIFY SYSTEMS"}
@@ -273,14 +295,17 @@ function App() {
   }
 
   const activeCamData = data.cameras.find(c => c.id === activeCam) || {};
-
-  // Calculate Real-Time Global Stats
   const globalDetected = data.cameras.reduce((sum, cam) => sum + (cam.people_count || 0), 0);
   const globalDanger = data.cameras.reduce((sum, cam) => sum + (cam.danger_count || 0), 0);
   const globalSafe = Math.max(0, globalDetected - globalDanger);
 
+  // --- DASHBOARD RENDER ---
   return (
     <div className="dashboard-container">
+      {/* Hidden elements needed for the web camera stream */}
+      <video ref={videoRef} autoPlay playsInline muted style={{ display: 'none' }}></video>
+      <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
+
       <div className="sidebar">
         <div className="brand"><Shield size={24} /> BHARATI</div>
         <div className="nav-buttons">
@@ -288,18 +313,16 @@ function App() {
             <button className={`nav-btn ${currentView === 'cameras' ? 'active' : ''}`} onClick={() => setCurrentView('cameras')}> <Video size={16}/> Cameras </button>
             <button className={`nav-btn ${currentView === 'settings' ? 'active' : ''}`} onClick={() => setCurrentView('settings')}> <Settings size={16}/> Settings </button>
             
-            {/* Conditional Rendering: Only Admin sees Lifeguards menu */}
             {userRole === 'admin' && (
                 <button className={`nav-btn ${currentView === 'lifeguards' ? 'active' : ''}`} onClick={() => setCurrentView('lifeguards')}> <Users size={16}/> Lifeguards </button>
             )}
-
         </div>
         <button className="logout-btn" onClick={() => {setIsLoggedIn(false); setUsername(''); setPassword(''); setUserRole(null);}}><LogOut size={20} /> LOGOUT</button>
       </div>
 
       <div className="main-content-area">
         
-        {/* --- 1. DASHBOARD VIEW (Map & Global Analytics) --- */}
+        {/* VIEW 1: DASHBOARD */}
         {currentView === 'dashboard' && (
             <div className="dashboard-wrapper">
                 <div className="kpi-ribbon">
@@ -322,30 +345,21 @@ function App() {
             </div>
         )}
 
-        {/* --- 2. CAMERAS VIEW (Command Center Layout) --- */}
+        {/* VIEW 2: CAMERAS */}
         {currentView === 'cameras' && (
             <div className="cameras-layout">
-                
-                {/* LEFT COLUMN: Video Feeds */}
                 <div className="cameras-left">
-                    
-                    {/* HERO CAMERA */}
                     <div className="hero-cam-container">
                         <div className="hero-header">
                             <span className="hero-cam-title">LIVE CAMERA FEED - {activeCam}</span>
                             {activeCamData.status === 'online' ? <span className="badge online" style={{background: 'rgba(0,0,0,0.5)'}}>● LIVE</span> : <span className="badge offline">● LOST</span>}
                         </div>
                         
-                        {/* Intelligent Overlays */}
                         <div className="hero-overlays">
                             <div className="hero-date-weather">
                                 <div className="overlay-box" style={{display:'flex', flexDirection:'column', padding: '8px 12px'}}>
                                     <span style={{fontWeight:'800', fontSize: '0.85rem'}}>{new Date().toLocaleTimeString()}</span>
                                     <small style={{fontSize: '0.65rem'}}>{new Date().toLocaleDateString()}</small>
-                                </div>
-                                <div className="overlay-box" style={{display:'flex', alignItems:'center', gap:'10px', padding: '8px 12px'}}>
-                                    <span style={{fontSize:'1rem', fontWeight: '800'}}>{marineData.temp}</span>
-                                    <small style={{opacity: 0.8, fontSize: '0.7rem'}}>Partly Cloudy</small>
                                 </div>
                             </div>
                             
@@ -364,21 +378,20 @@ function App() {
                         </div>
 
                         <div className="video-wrapper"> 
-                            {activeCamData.status === 'online' ? 
-                                <img src={`${API_URL}/video_feed/${activeCam}`} className="grid-feed" alt={activeCam} /> 
-                            : 
+                            {activeCam === 'CAM-01' ? (
+                                processedImage ? <img src={processedImage} className="grid-feed" alt="Processed Feed" /> : <div className="offline-placeholder"><Loader2 className="spin" size={40}/> INITIATING CLOUD INFERENCE...</div>
+                            ) : (
                                 <div className="offline-placeholder"><WifiOff size={40}/> NO SIGNAL</div>
-                            } 
+                            )}
                         </div>
                     </div>
 
-                    {/* CAMERA CAROUSEL */}
                     <div className="cam-carousel">
                         {data.cameras.map(cam => (
                             <div key={cam.id} className={`carousel-item ${activeCam === cam.id ? 'active-cam' : ''} ${cam.has_threat ? 'danger-border' : ''}`} onClick={() => setActiveCam(cam.id)}>
                                 <div className="carousel-vid">
-                                    {cam.status === 'online' ? 
-                                        <img src={`${API_URL}/video_feed/${cam.id}`} alt={cam.id} /> 
+                                    {cam.id === 'CAM-01' && processedImage ? 
+                                        <img src={processedImage} alt={cam.id} /> 
                                     : 
                                         <div style={{height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><WifiOff size={24} style={{opacity:0.3}}/></div>
                                     }
@@ -392,9 +405,7 @@ function App() {
                     </div>
                 </div>
 
-                {/* RIGHT COLUMN: Telemetry & Analytics */}
                 <div className="cameras-right">
-                    
                     <div className="side-panel-card">
                         <h4 className="panel-title">Safety Summary</h4>
                         <div className="kpi-row">
@@ -403,7 +414,6 @@ function App() {
                             <div className="kpi-col"><small style={{color:'#fca5a5'}}>DANGER ZONE</small><span className="text-danger">{globalDanger}</span></div>
                         </div>
                     </div>
-
                     <div className="side-panel-card" style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
                         <h4 className="panel-title">Beach Alerts</h4>
                         <div className="alerts-list" style={{flex: 1, overflowY: 'auto'}}>
@@ -424,129 +434,127 @@ function App() {
                             ))}
                         </div>
                     </div>
-
-                    <div className="side-panel-card">
-                        <h4 className="panel-title">Tide & Sea Conditions</h4>
-                        <div className="marine-grid">
-                            <div className="marine-item"><small>Location</small><span>Visakhapatnam</span></div>
-                            <div className="marine-item"><small>Tide</small><span>{marineData.tide}</span></div>
-                            <div className="marine-item"><small>Wave Height</small><span>{marineData.wave}</span></div>
-                            <div className="marine-item"><small>Wind Speed</small><span>{marineData.wind}</span></div>
-                        </div>
-                    </div>
-
                 </div>
-
             </div>
         )}
 
-        {/* --- 3. SETTINGS VIEW --- */}
+        {/* VIEW 3: SETTINGS */}
         {currentView === 'settings' && (
-            <div className="settings-container">
-                <h2><Settings size={28}/> System Configuration</h2>
-                <div className="settings-layout" style={{ gridTemplateColumns: '0.6fr' }}>
-                    <div className="settings-column">
-                        <div className="settings-card">
-                            <h3 className="section-header">System Parameters</h3>
-                            <div className="setting-group">
-                                <label>Alert Preferences</label>
-                                <div className="checkbox-row"> <input type="checkbox" checked={settings.enable_log} onChange={(e) => setSettings({...settings, enable_log: e.target.checked})}/> <span><List size={16} style={{display:'inline'}}/> Activity Log Notification</span> </div>
-                                <div className="checkbox-row"> <input type="checkbox" checked={settings.enable_siren} onChange={(e) => setSettings({...settings, enable_siren: e.target.checked})}/> <span><Volume2 size={16} style={{display:'inline'}}/> Audio Siren</span> </div>
-                                <div className="checkbox-row" style={{marginBottom: settings.enable_sms ? '5px' : '10px'}}> <input type="checkbox" checked={settings.enable_sms} onChange={(e) => setSettings({...settings, enable_sms: e.target.checked})}/> <span><Smartphone size={16} style={{display:'inline'}}/> WhatsApp Notification</span> </div>
-                                {settings.enable_sms && (
-                                    <div className="sms-options-panel">
-                                        <div style={{fontSize:'0.85rem', color:'#94a3b8', marginBottom:'10px'}}>Notify these lifeguards:</div>
-                                        <div className="sms-list-container">
-                                            {lifeguards.length === 0 && <div style={{fontSize:'0.8rem', fontStyle:'italic', color:'#64748b'}}>No staff registered.</div>}
-                                            {lifeguards.map((guard) => (
-                                                <label key={guard.username} className="sms-contact-row">
-                                                    <input type="checkbox" checked={(settings.sms_phone_number || "").includes(guard.mobile)} onChange={() => toggleLifeguardSms(guard.mobile)} />
-                                                    <span>{guard.name} <small style={{opacity:0.6}}>({guard.mobile})</small></span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                        <div style={{marginTop:'10px'}}>
-                                            <label style={{fontSize:'0.85rem', color:'#38bdf8', marginBottom:'5px', display:'block'}}>Emergency / HQ Number</label>
-                                            <div style={{display:'flex', gap:'8px'}}> <Phone size={16} style={{color:'#64748b', marginTop:'10px'}}/> <input type="text" className="text-input" placeholder="+91..." value={extraSmsNumber} onChange={(e) => updateExtraNumber(e.target.value)} /> </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                             <div className="setting-group"> 
-                                 <label>Safe Distance Threshold (Pixels)</label> 
-                                 <div className="range-wrapper"> 
-                                     <input type="range" min="50" max="500" value={settings.danger_threshold} onChange={(e) => setSettings({...settings, danger_threshold: parseInt(e.target.value)})} /> 
-                                     <span className="val-box">{settings.danger_threshold} px</span> 
-                                 </div> 
+             <div className="settings-wrapper" style={{padding: '20px', color: 'white'}}>
+                 <h2 style={{marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px'}}><Settings /> System Configuration</h2>
+                 
+                 <div className="settings-grid" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
+                     <div className="settings-card" style={{background: '#1e293b', padding: '20px', borderRadius: '12px'}}>
+                         <h4 style={{marginBottom: '15px', color: '#38bdf8'}}>Detection Parameters</h4>
+                         <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+                             <div>
+                                 <label style={{display: 'block', fontSize: '0.85rem', marginBottom: '5px'}}>Danger Proximity Threshold (pixels)</label>
+                                 <input type="number" style={{width: '100%', padding: '8px', borderRadius: '4px', background: '#0f172a', border: '1px solid #334155', color: 'white'}}
+                                    value={settings.danger_threshold} onChange={(e) => setSettings({...settings, danger_threshold: parseFloat(e.target.value)})} />
                              </div>
-                            <div className="setting-group"> <label>Capture Duration (Max 10s)</label> <div className="range-wrapper"> <input type="range" min="1" max="10" value={settings.record_duration} onChange={(e) => setSettings({...settings, record_duration: parseInt(e.target.value)})} /> <span className="val-box">{settings.record_duration} sec</span> </div> </div>
-                            <div className="setting-group"> <label><Folder size={16}/> Save Directory</label> <div style={{display:'flex', gap:'10px'}}> <input type="text" className="text-input" value={settings.save_directory} readOnly /> <button className="browse-btn" onClick={handleBrowse}><FolderOpen size={18} /> Select</button> </div> </div>
-                            <button className="save-btn" onClick={handleSaveSettings}> <Save size={18}/> {saveStatus || "Apply & Save Settings"} </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                             <div>
+                                 <label style={{display: 'block', fontSize: '0.85rem', marginBottom: '5px'}}>WhatsApp Target Numbers (Comma separated)</label>
+                                 <input type="text" style={{width: '100%', padding: '8px', borderRadius: '4px', background: '#0f172a', border: '1px solid #334155', color: 'white'}}
+                                    value={settings.sms_phone_number} onChange={(e) => setSettings({...settings, sms_phone_number: e.target.value})} />
+                             </div>
+                         </div>
+                     </div>
+
+                     <div className="settings-card" style={{background: '#1e293b', padding: '20px', borderRadius: '12px'}}>
+                         <h4 style={{marginBottom: '15px', color: '#38bdf8'}}>System Actions</h4>
+                         <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+                             <label style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer'}}>
+                                 <input type="checkbox" checked={settings.enable_siren} onChange={(e) => setSettings({...settings, enable_siren: e.target.checked})} />
+                                 Enable Audio Siren on Danger
+                             </label>
+                             <label style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer'}}>
+                                 <input type="checkbox" checked={settings.enable_sms} onChange={(e) => setSettings({...settings, enable_sms: e.target.checked})} />
+                                 Enable WhatsApp Alert Dispatch
+                             </label>
+                             <label style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer'}}>
+                                 <input type="checkbox" checked={settings.enable_log} onChange={(e) => setSettings({...settings, enable_log: e.target.checked})} />
+                                 Log Events to Dashboard
+                             </label>
+                         </div>
+                     </div>
+                 </div>
+
+                 <button onClick={handleSaveSettings} style={{marginTop: '20px', padding: '10px 20px', background: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
+                     <Save size={18} /> Apply Changes
+                 </button>
+             </div>
         )}
 
-        {/* --- 4. LIFEGUARDS VIEW --- */}
+        {/* VIEW 4: LIFEGUARDS (Admin Only) */}
         {currentView === 'lifeguards' && userRole === 'admin' && (
-            <div className="settings-container">
-                <h2><Users size={28}/> Staff Management</h2>
-                <div className="settings-layout">
-                    <div className="settings-column">
-                        
-                        <div className="settings-card">
-                            <h3 className="section-header"><UserPlus size={18}/> Register New Lifeguard</h3>
-                            <div className="add-guard-form">
-                                <input type="text" placeholder="Full Name" className="text-input" value={newGuard.name} onChange={e => setNewGuard({...newGuard, name: e.target.value})}/>
-                                <input type="text" placeholder="Mobile Number" className="text-input" value={newGuard.mobile} onChange={e => setNewGuard({...newGuard, mobile: e.target.value})}/>
-                                <div style={{display:'flex', gap:'10px'}}>
-                                    <input type="text" placeholder="Username (ID)" className="text-input" style={{flex:1}} value={newGuard.username} onChange={e => setNewGuard({...newGuard, username: e.target.value})}/>
-                                    <input type="text" placeholder="Password" className="text-input" style={{flex:1}} value={newGuard.password} onChange={e => setNewGuard({...newGuard, password: e.target.value})}/>
-                                </div>
-                                <button className="add-btn" onClick={handleAddLifeguard}> <Save size={18}/> Save Credentials </button>
-                            </div>
-                        </div>
+             <div className="lifeguards-wrapper" style={{padding: '20px', color: 'white'}}>
+                 <h2 style={{marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px'}}><Users /> Lifeguard Management</h2>
+                 
+                 <div className="lifeguard-split" style={{display: 'flex', gap: '20px'}}>
+                     {/* Add Lifeguard Form */}
+                     <div className="settings-card" style={{flex: 1, background: '#1e293b', padding: '20px', borderRadius: '12px', height: 'fit-content'}}>
+                         <h4 style={{marginBottom: '15px', color: '#34d399'}}>Register New Lifeguard</h4>
+                         <form onSubmit={handleAddLifeguard} style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                             <div>
+                                 <label style={{fontSize: '0.8rem', display: 'block', marginBottom: '4px'}}>Full Name</label>
+                                 <input type="text" required value={newGuard.name} onChange={(e)=>setNewGuard({...newGuard, name: e.target.value})} style={{width: '100%', padding: '8px', borderRadius: '4px', background: '#0f172a', border: '1px solid #334155', color: 'white'}} />
+                             </div>
+                             <div>
+                                 <label style={{fontSize: '0.8rem', display: 'block', marginBottom: '4px'}}>Mobile Number (For WhatsApp)</label>
+                                 <input type="text" required value={newGuard.mobile} onChange={(e)=>setNewGuard({...newGuard, mobile: e.target.value})} style={{width: '100%', padding: '8px', borderRadius: '4px', background: '#0f172a', border: '1px solid #334155', color: 'white'}} />
+                             </div>
+                             <div>
+                                 <label style={{fontSize: '0.8rem', display: 'block', marginBottom: '4px'}}>Login Username</label>
+                                 <input type="text" required value={newGuard.username} onChange={(e)=>setNewGuard({...newGuard, username: e.target.value})} style={{width: '100%', padding: '8px', borderRadius: '4px', background: '#0f172a', border: '1px solid #334155', color: 'white'}} />
+                             </div>
+                             <div>
+                                 <label style={{fontSize: '0.8rem', display: 'block', marginBottom: '4px'}}>Login Password</label>
+                                 <input type="password" required value={newGuard.password} onChange={(e)=>setNewGuard({...newGuard, password: e.target.value})} style={{width: '100%', padding: '8px', borderRadius: '4px', background: '#0f172a', border: '1px solid #334155', color: 'white'}} />
+                             </div>
+                             <button type="submit" style={{marginTop: '10px', padding: '10px', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'}}>
+                                 + Register Lifeguard
+                             </button>
+                         </form>
+                     </div>
 
-                        {isEditing && (
-                            <div className="settings-card" style={{marginTop:'20px', border: '2px solid #f59e0b', animation: 'flashBorder 1s'}}>
-                                <h3 className="section-header" style={{color: '#f59e0b'}}> <Edit2 size={18}/> Update Lifeguard Details </h3>
-                                <div className="add-guard-form">
-                                    <input type="text" placeholder="Full Name" className="text-input" value={editGuardData.name} onChange={e => setEditGuardData({...editGuardData, name: e.target.value})}/>
-                                    <input type="text" placeholder="Mobile Number" className="text-input" value={editGuardData.mobile} onChange={e => setEditGuardData({...editGuardData, mobile: e.target.value})}/>
-                                    <div style={{display:'flex', gap:'10px'}}>
-                                        <input type="text" placeholder="Username (ID)" className="text-input" style={{flex:1}} value={editGuardData.username} onChange={e => setEditGuardData({...editGuardData, username: e.target.value})}/>
-                                        <input type="text" placeholder="Password" className="text-input" style={{flex:1}} value={editGuardData.password} onChange={e => setEditGuardData({...editGuardData, password: e.target.value})}/>
-                                    </div>
-                                    <div style={{display:'flex', gap:'10px'}}>
-                                        <button className="cancel-btn" onClick={cancelEdit} title="Cancel Editing"> <X size={18}/> Cancel </button>
-                                        <button className="add-btn update-mode" onClick={handleUpdateLifeguard} style={{flex:1}}> <Save size={18}/> Update Details </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="settings-column" style={{flex:1, minHeight:'300px'}}>
-                        <div className="settings-card full-height-card">
-                            <h3 className="section-header"><Users size={18}/> Active Staff Directory</h3>
-                            <div className="guard-list">
-                                {lifeguards.length === 0 && <div className="no-data">None lifeguards registered.</div>}
-                                {lifeguards.map((guard, idx) => (
-                                    <div key={idx} className="guard-item" style={isEditing && editingUsername === guard.username ? {border:'1px solid #f59e0b', background: '#262626'} : {}}>
-                                        <div className="guard-info"> <span className="g-name">{guard.name}</span> <span className="g-meta">{guard.mobile}</span> <span className="g-meta" style={{color:'#38bdf8'}}>@{guard.username}</span> </div>
-                                        <div style={{display:'flex', gap:'8px'}}>
-                                            <button className="edit-btn" onClick={() => handleEditClick(guard)} title="Edit Details"> <Edit2 size={16}/> </button>
-                                            <button className="del-btn" onClick={() => handleDeleteLifeguard(guard.username)} title="Remove Access"> <Trash2 size={16}/> </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                     {/* Lifeguards Roster */}
+                     <div className="settings-card" style={{flex: 2, background: '#1e293b', padding: '20px', borderRadius: '12px'}}>
+                         <h4 style={{marginBottom: '15px', color: '#38bdf8'}}>Active Roster</h4>
+                         <div style={{background: '#0f172a', borderRadius: '8px', overflow: 'hidden'}}>
+                             <table style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
+                                 <thead>
+                                     <tr style={{background: '#334155', color: '#94a3b8', fontSize: '0.85rem'}}>
+                                         <th style={{padding: '12px'}}>Name</th>
+                                         <th style={{padding: '12px'}}>Username</th>
+                                         <th style={{padding: '12px'}}>Mobile</th>
+                                         <th style={{padding: '12px', textAlign: 'center'}}>Actions</th>
+                                     </tr>
+                                 </thead>
+                                 <tbody>
+                                     {lifeguards.length === 0 ? (
+                                         <tr><td colSpan="4" style={{padding: '20px', textAlign: 'center', color: '#64748b'}}>No lifeguards registered yet.</td></tr>
+                                     ) : (
+                                         lifeguards.map((guard, idx) => (
+                                             <tr key={idx} style={{borderBottom: '1px solid #1e293b'}}>
+                                                 <td style={{padding: '12px'}}>{guard.name}</td>
+                                                 <td style={{padding: '12px'}}>{guard.username}</td>
+                                                 <td style={{padding: '12px'}}>{guard.mobile}</td>
+                                                 <td style={{padding: '12px', textAlign: 'center'}}>
+                                                     <button onClick={() => handleDeleteLifeguard(guard.username)} style={{background: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer'}} title="Remove">
+                                                         <Trash2 size={18} />
+                                                     </button>
+                                                 </td>
+                                             </tr>
+                                         ))
+                                     )}
+                                 </tbody>
+                             </table>
+                         </div>
+                     </div>
+                 </div>
+             </div>
         )}
+
       </div>
     </div>
   );
