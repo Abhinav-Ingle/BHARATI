@@ -428,7 +428,18 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
 
 
+/* Enable smooth vertical scrolling for main views */
+.main-content-area {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
 
+/* Ensure the settings wrapper has bottom padding so the save button isn't cut off */
+.settings-wrapper {
+  padding-bottom: 60px;
+}
 
 /* =========================================
    BHARATI CUSTOM UI THEME SETTINGS 
