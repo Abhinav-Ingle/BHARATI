@@ -13,8 +13,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png')
 });
 
-// ⚠️ IMPORTANT: Verify this is your exact Render URL without a trailing slash
-const API_URL = "https://bharati.onrender.com";
+const API_URL = "https://testbharatibackend.shares.zrok.io/";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
