@@ -13,7 +13,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png')
 });
 
-// ✅ CORRECT: No trailing slash at the end of the URL
 const API_URL = "https://testbharatibackend.shares.zrok.io";
 
 function App() {
@@ -40,13 +39,25 @@ function App() {
   const [processedImage, setProcessedImage] = useState(null);
   const isStreaming = useRef(false);
 
-  // Settings & Lifeguard States
+  // Settings, HQ & Lifeguard States
   const [settings, setSettings] = useState({
     danger_threshold: 385, min_person_pixels: 67, record_duration: 8, save_directory: "C:\\Users\\Desktop\\BHARATI\\backend\\recordings",
     enable_log: true, enable_sms: true, enable_siren: true, sms_phone_number: ""
   });
   const [lifeguards, setLifeguards] = useState([]);
   const [newGuard, setNewGuard] = useState({ name: "", mobile: "", username: "", password: "" });
+  
+  // NEW: Dedicated states for compiling the WhatsApp numbers
+  const [hqNumber, setHqNumber] = useState("");
+  const [selectedGuardMobiles, setSelectedGuardMobiles] = useState([]);
+
+  // Initialize selected guards when lifeguards are loaded
+  useEffect(() => {
+    if (lifeguards.length > 0 && selectedGuardMobiles.length === 0) {
+        setSelectedGuardMobiles(lifeguards.map(g => g.mobile));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lifeguards]);
 
   // Audio Siren
   const playSiren = () => {
@@ -80,7 +91,7 @@ function App() {
     setIsChecking(false);
   };
 
-  // Login Handler (Includes Zrok Bypass Header)
+  // Login Handler
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
@@ -204,11 +215,18 @@ function App() {
         const res = await fetch(`${API_URL}/settings`, {
             headers: { 'skip_zrok_interstitial': 'true' }
         });
-        if (res.ok) setSettings(await res.json());
+        if (res.ok) {
+            const fetchedSettings = await res.json();
+            setSettings(fetchedSettings);
+        }
     } catch (e) {}
   };
 
   const handleSaveSettings = async () => {
+    // Combine HQ Number with Checked Lifeguards
+    const combinedNumbers = [hqNumber, ...selectedGuardMobiles].filter(n => n && n.trim() !== "");
+    const finalSettingsPayload = { ...settings, sms_phone_number: combinedNumbers.join(",") };
+
     try {
         const res = await fetch(`${API_URL}/settings`, {
             method: 'POST', 
@@ -216,7 +234,7 @@ function App() {
                 'Content-Type': 'application/json',
                 'skip_zrok_interstitial': 'true'
             },
-            body: JSON.stringify(settings)
+            body: JSON.stringify(finalSettingsPayload)
         });
         if (res.ok) alert("Configuration Saved Successfully");
     } catch (e) { alert("Failed to save configuration"); }
@@ -228,7 +246,11 @@ function App() {
         const res = await fetch(`${API_URL}/lifeguards?admin_id=${adminId || username}`, {
             headers: { 'skip_zrok_interstitial': 'true' }
         });
-        if (res.ok) setLifeguards(await res.json());
+        if (res.ok) {
+            const fetchedGuards = await res.json();
+            setLifeguards(fetchedGuards);
+            setSelectedGuardMobiles(fetchedGuards.map(g => g.mobile)); // Auto-select all fetched guards
+        }
     } catch (e) {}
   };
 
@@ -438,7 +460,7 @@ function App() {
             </div>
         )}
 
-        {/* VIEW 3: SETTINGS (RESTORED BEAUTIFUL UI) */}
+        {/* VIEW 3: SETTINGS */}
         {currentView === 'settings' && (
              <div className="settings-wrapper" style={{color: '#e2e8f0', maxWidth: '650px'}}>
                  <h2 style={{marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.8rem', fontWeight: '600'}}>
@@ -467,17 +489,30 @@ function App() {
                          </label>
                      </div>
 
-                     {/* Notify Lifeguards Area */}
+                     {/* Notify Lifeguards Area (NOW FULLY FUNCTIONAL) */}
                      <div style={{background: '#0f172a', padding: '20px', borderRadius: '12px', marginBottom: '25px'}}>
                         <p style={{fontSize: '0.85rem', color: '#94a3b8', marginBottom: '15px'}}>Notify these lifeguards:</p>
                         {lifeguards.length > 0 ? (
-                            lifeguards.map((guard, idx) => (
-                                 <label key={idx} className="custom-check-row" style={{marginBottom: '10px', padding: '10px', background: '#1e293b'}}>
-                                     <input type="checkbox" defaultChecked />
-                                     <span className="check-box"></span>
-                                     <span style={{fontWeight: '600'}}>{guard.name}</span> <span style={{color: '#64748b', fontSize: '0.85rem'}}>({guard.mobile})</span>
-                                 </label>
-                            ))
+                            lifeguards.map((guard, idx) => {
+                                const isChecked = selectedGuardMobiles.includes(guard.mobile);
+                                return (
+                                     <label key={idx} className="custom-check-row" style={{marginBottom: '10px', padding: '10px', background: '#1e293b'}}>
+                                         <input 
+                                            type="checkbox" 
+                                            checked={isChecked}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setSelectedGuardMobiles([...selectedGuardMobiles, guard.mobile]);
+                                                } else {
+                                                    setSelectedGuardMobiles(selectedGuardMobiles.filter(m => m !== guard.mobile));
+                                                }
+                                            }}
+                                         />
+                                         <span className="check-box"></span>
+                                         <span style={{fontWeight: '600'}}>{guard.name}</span> <span style={{color: '#64748b', fontSize: '0.85rem'}}>({guard.mobile})</span>
+                                     </label>
+                                )
+                            })
                         ) : (
                             <p style={{color: '#64748b', fontSize: '0.85rem'}}>No active lifeguards found.</p>
                         )}
@@ -486,7 +521,7 @@ function App() {
                             <label style={{fontSize: '0.8rem', color: '#0ea5e9', display: 'block', marginBottom: '8px', fontWeight: '600'}}>Emergency / HQ Number</label>
                             <div style={{display: 'flex', alignItems: 'center', background: '#1e293b', borderRadius: '8px', padding: '0 12px'}}>
                                 <Phone size={16} color="#64748b" />
-                                <input type="text" placeholder="+91..." value={settings.sms_phone_number} onChange={(e) => setSettings({...settings, sms_phone_number: e.target.value})} style={{background: 'transparent', border: 'none', color: 'white', padding: '12px', width: '100%', outline: 'none'}} />
+                                <input type="text" placeholder="+91..." value={hqNumber} onChange={(e) => setHqNumber(e.target.value)} style={{background: 'transparent', border: 'none', color: 'white', padding: '12px', width: '100%', outline: 'none'}} />
                             </div>
                         </div>
                      </div>
@@ -523,7 +558,7 @@ function App() {
              </div>
         )}
 
-        {/* VIEW 4: LIFEGUARDS (RESTORED BEAUTIFUL UI) */}
+        {/* VIEW 4: LIFEGUARDS */}
         {currentView === 'lifeguards' && userRole === 'admin' && (
              <div className="lifeguards-wrapper" style={{color: '#e2e8f0'}}>
                  <h2 style={{marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.8rem', fontWeight: '600'}}>
