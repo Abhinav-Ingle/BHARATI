@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png')
 });
 
-const API_URL = "https://testbharatibackend.shares.zrok.io/";
+const API_URL = "https://testbharatibackend.shares.zrok.io";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
