@@ -13,6 +13,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png')
 });
 
+// ✅ CORRECT: No trailing slash at the end of the URL
 const API_URL = "https://testbharatibackend.shares.zrok.io";
 
 function App() {
@@ -79,12 +80,16 @@ function App() {
     setIsChecking(false);
   };
 
-  // Login Handler
+  // Login Handler (Includes Zrok Bypass Header)
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
         const res = await fetch(`${API_URL}/login`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', 
+            headers: { 
+                'Content-Type': 'application/json',
+                'skip_zrok_interstitial': 'true'
+            },
             body: JSON.stringify({ username, password })
         });
         if (res.ok) {
@@ -135,7 +140,10 @@ function App() {
             try {
                 const response = await fetch(`${API_URL}/process_frame`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'skip_zrok_interstitial': 'true' 
+                    },
                     body: JSON.stringify({ cam_id: "CAM-01", image: frameBase64 })
                 });
                 
@@ -163,7 +171,9 @@ function App() {
   useEffect(() => {
     if (isLoggedIn) {
       const interval = setInterval(() => {
-        fetch(`${API_URL}/status`)
+        fetch(`${API_URL}/status`, {
+            headers: { 'skip_zrok_interstitial': 'true' }
+        })
           .then(res => res.json())
           .then(result => {
             setData(result);
@@ -191,7 +201,9 @@ function App() {
   // --- Settings Data Fetching & Saving ---
   const fetchSettings = async () => {
     try {
-        const res = await fetch(`${API_URL}/settings`);
+        const res = await fetch(`${API_URL}/settings`, {
+            headers: { 'skip_zrok_interstitial': 'true' }
+        });
         if (res.ok) setSettings(await res.json());
     } catch (e) {}
   };
@@ -199,7 +211,11 @@ function App() {
   const handleSaveSettings = async () => {
     try {
         const res = await fetch(`${API_URL}/settings`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', 
+            headers: { 
+                'Content-Type': 'application/json',
+                'skip_zrok_interstitial': 'true'
+            },
             body: JSON.stringify(settings)
         });
         if (res.ok) alert("Configuration Saved Successfully");
@@ -209,7 +225,9 @@ function App() {
   // --- Lifeguard Database Handling ---
   const fetchLifeguards = async (adminId) => {
     try {
-        const res = await fetch(`${API_URL}/lifeguards?admin_id=${adminId || username}`);
+        const res = await fetch(`${API_URL}/lifeguards?admin_id=${adminId || username}`, {
+            headers: { 'skip_zrok_interstitial': 'true' }
+        });
         if (res.ok) setLifeguards(await res.json());
     } catch (e) {}
   };
@@ -219,7 +237,11 @@ function App() {
     try {
         const payload = { ...newGuard, created_by: username };
         const res = await fetch(`${API_URL}/lifeguards`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', 
+            headers: { 
+                'Content-Type': 'application/json',
+                'skip_zrok_interstitial': 'true'
+            },
             body: JSON.stringify(payload)
         });
         if (res.ok) {
@@ -237,7 +259,8 @@ function App() {
     if (!window.confirm(`Are you sure you want to remove ${guardUsername}?`)) return;
     try {
         const res = await fetch(`${API_URL}/lifeguards/${guardUsername}?admin_id=${username}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: { 'skip_zrok_interstitial': 'true' }
         });
         if (res.ok) {
             const responseData = await res.json();
